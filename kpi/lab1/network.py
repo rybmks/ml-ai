@@ -25,22 +25,21 @@ class Network(nn.Module):
         self.drop = nn.Dropout(0.15)
         self.flatten = nn.Flatten()
         
-        # The corrected input size for the linear layer
         self.fc1 = nn.Linear(512 * 2 * 2, 1024)
         self.fc2 = nn.Linear(1024, 512)
 
     def _forward_conv(self, x):
-        x = self.pool(F.relu(self.bn1(self.conv1(x)))) # 128 -> 64
+        x = self.pool(F.relu(self.bn1(self.conv1(x))))
         x = self.drop(x)
-        x = self.pool(F.relu(self.bn2(self.conv2(x)))) # 64 -> 32
+        x = self.pool(F.relu(self.bn2(self.conv2(x))))
         x = self.drop(x)
-        x = self.pool(F.relu(self.bn3(self.conv3(x)))) # 32 -> 16
+        x = self.pool(F.relu(self.bn3(self.conv3(x))))
         x = self.drop(x)
-        x = self.pool(F.relu(self.bn4(self.conv4(x)))) # 16 -> 8
+        x = self.pool(F.relu(self.bn4(self.conv4(x))))
         x = self.drop(x)
-        x = self.pool(F.relu(self.bn5(self.conv5(x)))) # 8 -> 4
+        x = self.pool(F.relu(self.bn5(self.conv5(x))))
         x = self.drop(x)
-        x = self.pool(F.relu(self.bn6(self.conv6(x)))) # 4 -> 2
+        x = self.pool(F.relu(self.bn6(self.conv6(x))))
         x = self.drop(x)
         return x
 
