@@ -13,33 +13,33 @@ from pathlib import Path
 from PIL import Image
 import matplotlib.pyplot as plt
 from torch.optim.lr_scheduler import StepLR
-
+import numpy as np 
+from helpers import find_optimal_threshold
 
 MATCH_TRAIN_CSV = "matchpairsDevTrain.csv"
 MISMATCH_TRAIN_CSV = "mismatchpairsDevTrain.csv"
+MATCH_TEST_CSV = "matchpairsDevTest.csv"
+MISMATCH_TEST_CSV = "mismatchpairsDevTest.csv"
 IMAGES_SUBDIR = "lfw-deepfunneled/lfw-deepfunneled"
 WEIGHTS_FILE = "siamese_network.pth"
 SOME_GUY="/Users/maksym/.cache/kagglehub/datasets/jessicali9530/lfw-dataset/versions/4/lfw-deepfunneled/lfw-deepfunneled/Aaron_Peirsol/Aaron_Peirsol_0001.jpg"
 OTHER_PHOTO_OF_THIS_GUY="/Users/maksym/.cache/kagglehub/datasets/jessicali9530/lfw-dataset/versions/4/lfw-deepfunneled/lfw-deepfunneled/Aaron_Peirsol/Aaron_Peirsol_0003.jpg"
 OTHER_GUY="/Users/maksym/.cache/kagglehub/datasets/jessicali9530/lfw-dataset/versions/4/lfw-deepfunneled/lfw-deepfunneled/Aaron_Pena/Aaron_Pena_0001.jpg"
-    
-EPOCHS = 12
 
-device = torch.device("mps")
-model = Network().to(device)
+EPOCHS = 12
 
 tfm_eval = transforms.Compose([
     transforms.Resize((128, 128)),
     transforms.ToTensor(),
     transforms.Normalize([0.5]*3, [0.5]*3),
 ])
-
+device = torch.device("mps")
+model = Network().to(device)
 
 def main(): 
-
     path = kagglehub.dataset_download("jessicali9530/lfw-dataset")
     print(f"path: {path}")
-    # TODO: try other params
+
     tfm = transforms.Compose([
         transforms.Resize((128, 128)),
         transforms.RandomHorizontalFlip(p=0.5), 
@@ -50,6 +50,7 @@ def main():
         transforms.ToTensor(),
         transforms.Normalize([0.5]*3, [0.5]*3),
     ])
+
     matched_ds = LFWPairs(
         root=path, 
         csv_subpath=MATCH_TRAIN_CSV, 
@@ -57,7 +58,6 @@ def main():
         label=1.0,
         transform=tfm
     )
-
     mismatched_ds = LFWPairs(
         root=path,
         csv_subpath=MISMATCH_TRAIN_CSV,
@@ -65,11 +65,25 @@ def main():
         label=0.0,
         transform=tfm
     )
-
-    #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
     full_dataset = ConcatDataset([matched_ds, mismatched_ds])
     data_loader = DataLoader(full_dataset, shuffle=True, batch_size=64, num_workers=0, pin_memory=True)
+
+    matched_test_ds = LFWPairs(
+        root=path, 
+        csv_subpath=MATCH_TEST_CSV, 
+        images_subdir=IMAGES_SUBDIR,
+        label=1.0,
+        transform=tfm_eval
+    )
+    mismatched_test_ds = LFWPairs(
+        root=path,
+        csv_subpath=MISMATCH_TEST_CSV,
+        images_subdir=IMAGES_SUBDIR,
+        label=0.0,
+        transform=tfm_eval
+    )
+    full_test_dataset = ConcatDataset([matched_test_ds, mismatched_test_ds])
+    test_loader = DataLoader(full_test_dataset, shuffle=False, batch_size=64, num_workers=0, pin_memory=True)
 
     criterion = nn.CosineEmbeddingLoss()
     optimizer = optim.Adam(model.parameters(), lr=1e-4)
@@ -83,7 +97,6 @@ def main():
         for e in range(EPOCHS):
             running_loss = 0.0
             for x1, x2, y in data_loader:
-            #print("epoch for y = ", y)
                 x1, x2, y = x1.to(device), x2.to(device), y.to(device)
                 y = y * 2 - 1
 
@@ -105,28 +118,13 @@ def main():
         print("Saved model weights.")
 
     plt.plot(losses)
-    #plt.show()
-    check_similarity(
+    optimal_threshold = find_optimal_threshold(model, test_loader, device)
+    
+    model.check_similarity(
         SOME_GUY,
-        OTHER_PHOTO_OF_THIS_GUY
+        OTHER_GUY,
+        threshold=optimal_threshold
     )
-
-def check_similarity(img_path1: str, img_path2: str, threshold: float = 0.5):
-    img1 = tfm_eval(Image.open(img_path1).convert("RGB")).unsqueeze(0).to(device)
-    img2 = tfm_eval(Image.open(img_path2).convert("RGB")).unsqueeze(0).to(device)
-    
-    with torch.no_grad():
-        emb1 = model.forward_once(img1)
-        emb2 = model.forward_once(img2)
-    
-    cos_sim = F.cosine_similarity(emb1, emb2).item()
-    print(f"Cosine similarity: {cos_sim:.4f}")
-    
-    if cos_sim > threshold:
-        print("Faces are similar")
-    else:
-        print("Faces are different")
-
 
 if __name__ == "__main__":
     main()
