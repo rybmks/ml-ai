@@ -53,9 +53,9 @@ class Network(nn.Module):
         x = F.relu(self.fc1(x))
         x = self.drop(x)
         x = self.fc2(x)
-        
+
         x = F.normalize(x, p=2, dim=1)
         return x
 
-    def forward(self, x, y):
-        return self.forward_once(x), self.forward_once(y)
+    def forward(self, x):
+        return self.forward_once(x)
