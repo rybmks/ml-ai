@@ -86,8 +86,8 @@ def main():
     test_loader = DataLoader(full_test_dataset, shuffle=False, batch_size=64, num_workers=0, pin_memory=True)
 
     criterion = nn.CosineEmbeddingLoss()
-    optimizer = optim.Adam(model.parameters(), lr=1e-4)
-    scheduler = StepLR(optimizer, step_size=5, gamma=0.5)
+    optimizer = optim.Adam(model.parameters(), lr=1.5e-4)
+    scheduler = StepLR(optimizer, step_size=5, gamma=0.4)
 
     losses = []
     if Path(WEIGHTS_FILE).exists():
@@ -113,16 +113,16 @@ def main():
             loss = running_loss/len(data_loader)
             losses.append(loss)
             print(f"Epoch [{e+1}/{EPOCHS}] Loss: {loss:.4f}")
-
+        plt.plot(losses)
+        plt.show()
         torch.save(model.state_dict(), WEIGHTS_FILE)
         print("Saved model weights.")
 
-    plt.plot(losses)
     optimal_threshold = find_optimal_threshold(model, test_loader, device)
     
     model.check_similarity(
         SOME_GUY,
-        OTHER_GUY,
+        OTHER_PHOTO_OF_THIS_GUY,
         threshold=optimal_threshold
     )
 
