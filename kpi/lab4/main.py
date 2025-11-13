@@ -64,7 +64,7 @@ def show_plot(sig=None, frame=None):
     print("Показ графіка... (Закрийте вікно, щоб продовжити)")
     plt.show(block=True) 
 
-signal.signal(signal.SIGINT, lambda: (show_plot(), sys.exit(0)))
+signal.signal(signal.SIGINT, lambda sig, frame: (show_plot(), sys.exit(0)))
 
 class ReplayBuffer:
     def __init__(self, capacity):
